@@ -1,18 +1,7 @@
 /**
- * ============================================================
- *  SAVANNA BITES — script.js
- *  Handles: Supabase data, Cart, Checkout, M-Pesa STK Push
- * ============================================================
+ * Savanna Bites — Home page (index.html)
+ * Requires: config.js, Supabase CDN
  */
-
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-// 1. SUPABASE CONFIGURATION
-// ─────────────────────────────────────────────
-
-const SUPABASE_URL = 'https://mgdoxpkqghaanwirqobi.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nZG94cGtxZ2hhYW53aXJxb2JpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMjQxNjQsImV4cCI6MjA5NDcwMDE2NH0.Lu-4okdycE804AAOk-FYw9CX8hvyp1uEfO2iWpbbkp0';
 
 let supabaseClient = null;
 
@@ -51,29 +40,12 @@ function normalizeMenuItem(item) {
 }
 
 // ─────────────────────────────────────────────
-// 2. M-PESA DARAJA API CONFIGURATION
-// ─────────────────────────────────────────────
-// Fill these in after registering at https://developer.safaricom.co.ke/
-// For production, NEVER expose Consumer Secret on the client side.
-// Use a backend proxy (Node.js / Supabase Edge Function) to call Daraja.
-
-const MPESA_CONFIG = {
-  consumerKey:      'YOUR_CONSUMER_KEY',
-  consumerSecret:   'YOUR_CONSUMER_SECRET',
-  shortcode:        '174379',          // Safaricom sandbox shortcode
-  passkey:          'YOUR_PASSKEY',
-  callbackUrl:      'https://your-domain.com/api/mpesa-callback',
-  // Sandbox base URL (change to https://api.safaricom.co.ke for production)
-  baseUrl:          'https://sandbox.safaricom.co.ke',
-};
-
-
-// ─────────────────────────────────────────────
-// 3. STATE
+// STATE
 // ─────────────────────────────────────────────
 let cart     = [];       // Array of { item, quantity }
 let menuData = [];       // Full menu fetched from Supabase
 let activeCategory = 'all';
+let menuSearchQuery = ''; 
 
 
 // ─────────────────────────────────────────────
@@ -119,28 +91,115 @@ const DEMO_MENU = [
 // ─────────────────────────────────────────────
 // 5. FETCH MENU FROM SUPABASE
 // ─────────────────────────────────────────────
+const ADMIN_MENU_KEY = 'savanna_bites_admin_menu';
+const FULL_MENU_COUNT = 32;
+
+function toAdminStorageFormat(item) {
+  return {
+    id: item.id,
+    name: item.name,
+    price: item.price,
+    image: item.image_url || item.image,
+    category: item.category,
+  };
+}
+
 function getAdminMenuFromStorage() {
-  const key = 'savanna_bites_admin_menu';
   try {
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(ADMIN_MENU_KEY);
+    const fullSeed = DEMO_MENU.map(toAdminStorageFormat);
+
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      if (parsed.length >= FULL_MENU_COUNT) return parsed;
+
+      // Upgrade older saves so the homepage always has 32 items
+      const merged = mergeAdminMenuRecords(parsed, fullSeed);
+      localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(merged));
+      return merged;
     }
 
-    const fallbackAdminMenu = DEMO_MENU.map(item => ({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      image: item.image_url,
-      category: item.category,
-    }));
-    localStorage.setItem(key, JSON.stringify(fallbackAdminMenu));
-    console.log('Seeded default admin menu into localStorage from DEMO_MENU');
-    return fallbackAdminMenu;
+    localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(fullSeed));
+    console.log('Seeded admin menu into localStorage (32 items)');
+    return fullSeed;
   } catch (err) {
     console.warn('Failed to load admin menu from storage:', err);
     return null;
   }
+}
+
+function mergeAdminMenuRecords(primary, fallback) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const item of primary) {
+    const key = (item.name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+
+  for (const item of fallback) {
+    const key = (item.name || '').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+
+  return merged;
+}
+
+function menuItemKey(item) {
+  return (item.name || '').trim().toLowerCase();
+}
+
+/** Merge lists by food name; first list wins for duplicates. Always fills from fallback. */
+function mergeMenuByName(primary, fallback) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const item of primary) {
+    const key = menuItemKey(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(normalizeMenuItem(item));
+  }
+
+  for (const item of fallback) {
+    const key = menuItemKey(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(normalizeMenuItem(item));
+  }
+
+  return merged;
+}
+
+function formatSupabaseMenuItem(item) {
+  return {
+    id: String(item.id),
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    category: item.category,
+    image_url: item.image_url,
+    available: item.available !== false,
+  };
+}
+
+function buildHomepageMenu(adminItems, supabaseItems) {
+  let menu = DEMO_MENU.map(normalizeMenuItem);
+
+  if (adminItems?.length) {
+    menu = mergeMenuByName(convertAdminMenuToMainFormat(adminItems), DEMO_MENU);
+  }
+
+  if (supabaseItems?.length) {
+    const fromDb = supabaseItems.map(formatSupabaseMenuItem);
+    menu = mergeMenuByName(fromDb, menu);
+  }
+
+  return menu;
 }
 
 function convertAdminMenuToMainFormat(adminItems) {
@@ -157,35 +216,15 @@ function convertAdminMenuToMainFormat(adminItems) {
 
 function applyMenu(items, source) {
   menuData = items.map(normalizeMenuItem);
-  renderMenu(menuData);
   buildCategoryFilters(menuData);
-  if (source === 'supabase') {
-    showToast(`Menu loaded (${menuData.length} items)`, 'success');
-  } else if (source === 'admin') {
-    console.log('Loaded menu from admin dashboard');
-  } else {
-    showToast('Showing demo menu (Supabase unavailable)', 'info');
+  renderMenuWithFilters();
+  console.log(`Menu ready: ${menuData.length} items (${source})`);
+  if (menuData.length >= FULL_MENU_COUNT) {
+    showToast(`Menu loaded — ${menuData.length} dishes available`, 'success');
   }
 }
 
-async function fetchMenu() {
-  const grid = document.getElementById('menuGrid');
-  if (!grid) return;
-
-  console.log('Fetching menu…');
-
-  let data = null;
-
-  // 0) Check for admin menu updates from localStorage first
-  const adminMenu = getAdminMenuFromStorage();
-  if (adminMenu?.length) {
-    console.log('Loaded', adminMenu.length, 'items from admin menu');
-    const formattedMenu = convertAdminMenuToMainFormat(adminMenu);
-    applyMenu(formattedMenu, 'admin');
-    return;
-  }
-
-  // 1) Supabase JS client
+async function fetchSupabaseMenu() {
   const db = getSupabaseClient();
   if (db) {
     try {
@@ -196,29 +235,37 @@ async function fetchMenu() {
         .order('created_at', { ascending: false });
 
       if (result.error) throw result.error;
-      data = result.data;
+      if (result.data?.length) return result.data;
     } catch (err) {
       console.warn('Supabase client fetch failed:', err.message || err);
     }
   }
 
-  // 2) REST fallback (same API the dashboard uses)
-  if (!data?.length) {
-    try {
-      data = await fetchMenuViaRest();
-    } catch (err) {
-      console.warn('REST menu fetch failed:', err.message || err);
-    }
+  try {
+    return await fetchMenuViaRest();
+  } catch (err) {
+    console.warn('REST menu fetch failed:', err.message || err);
+    return null;
   }
+}
 
-  if (data?.length) {
-    console.log('Loaded', data.length, 'items from Supabase');
-    applyMenu(data, 'supabase');
-    return;
-  }
+async function fetchMenu() {
+  const grid = document.getElementById('menuGrid');
+  if (!grid) return;
 
-  console.log('Using demo menu as fallback');
-  applyMenu(DEMO_MENU, 'demo');
+  console.log('Building full menu (32 items)…');
+
+  const adminMenu = getAdminMenuFromStorage();
+  const supabaseData = await fetchSupabaseMenu();
+  const menu = buildHomepageMenu(adminMenu, supabaseData);
+
+  const source = adminMenu?.length
+    ? 'admin + catalog'
+    : supabaseData?.length
+      ? 'catalog + supabase'
+      : 'catalog';
+
+  applyMenu(menu, source);
 }
 
 
@@ -230,8 +277,11 @@ function renderMenu(items) {
   grid.innerHTML = '';
 
   if (!items.length) {
+    const message = menuSearchQuery
+      ? 'No menu items match your search. Try another term or clear the filters.'
+      : 'No items found in this category.';
     grid.innerHTML = `<p style="color:var(--clr-text-muted); grid-column:1/-1; text-align:center; padding:40px 0">
-      No items found in this category.
+      ${message}
     </p>`;
     return;
   }
@@ -288,25 +338,34 @@ function renderMenu(items) {
 // ─────────────────────────────────────────────
 // 7. CATEGORY FILTERS
 // ─────────────────────────────────────────────
+function filterMenuItems() {
+  const query = menuSearchQuery.trim().toLowerCase();
+  return menuData.filter(item => {
+    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+    const matchesSearch = !query || [item.name, item.description, item.category]
+      .some(value => String(value || '').toLowerCase().includes(query));
+    return matchesCategory && matchesSearch;
+  });
+}
+
+function renderMenuWithFilters() {
+  renderMenu(filterMenuItems());
+}
+
 function buildCategoryFilters(items) {
   const categories = ['all', ...new Set(items.map(i => i.category).filter(Boolean))];
-  const filterDiv  = document.getElementById('categoryFilter');
-  filterDiv.innerHTML = '';
+  const select = document.getElementById('category-select');
+  if (!select) return;
 
-  categories.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.className = `filter-btn${cat === activeCategory ? ' active' : ''}`;
-    btn.dataset.category = cat;
-    btn.textContent = cat === 'all' ? 'All' : cat;
-    btn.addEventListener('click', () => {
-      activeCategory = cat;
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const filtered = cat === 'all' ? menuData : menuData.filter(i => i.category === cat);
-      renderMenu(filtered);
-    });
-    filterDiv.appendChild(btn);
-  });
+  select.innerHTML = categories
+    .map(cat => `<option value="${cat}">${cat === 'all' ? 'All' : cat}</option>`)
+    .join('');
+  select.value = activeCategory;
+
+  select.onchange = () => {
+    activeCategory = select.value;
+    renderMenuWithFilters();
+  };
 }
 
 
@@ -430,7 +489,7 @@ document.getElementById('cartClose').addEventListener('click', closeCart);
 document.getElementById('cartOverlay').addEventListener('click', closeCart);
 document.getElementById('browseMenuBtn').addEventListener('click', () => {
   closeCart();
-  document.getElementById('menu').scrollIntoView({ behavior: 'smooth' });
+  window.location.href = 'menu.html';
 });
 
 
@@ -706,7 +765,10 @@ window.addEventListener('scroll', () => {
     if (el && window.scrollY >= el.offsetTop - 100) current = id;
   });
   document.querySelectorAll('.nav-link').forEach(link => {
-    link.classList.toggle('active', link.getAttribute('href') === `#${current}`);
+    const href = link.getAttribute('href');
+    if (href && href.startsWith('#')) {
+      link.classList.toggle('active', href === `#${current}`);
+    }
   });
 });
 
@@ -749,7 +811,17 @@ function delay(ms) {
 // ─────────────────────────────────────────────
 // 17. INIT
 // ─────────────────────────────────────────────
+function bindMenuSearch() {
+  const searchInput = document.getElementById('menu-search-input');
+  if (!searchInput) return;
+  searchInput.addEventListener('input', () => {
+    menuSearchQuery = searchInput.value;
+    renderMenuWithFilters();
+  });
+}
+
 function initApp() {
+  bindMenuSearch();
   fetchMenu();
   updateCartUI();
 }

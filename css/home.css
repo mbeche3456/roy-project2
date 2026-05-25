@@ -1,5 +1,5 @@
 /* ============================================================
-   SAVANNA BITES — style.css
+   SAVANNA BITES — css/home.css (index.html)
    Aesthetic: Warm editorial luxury with African earth tones
    ============================================================ */
 
@@ -379,12 +379,55 @@ ul { list-style: none; }
   margin: 0 auto;
 }
 
-.category-filter {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
+.menu-search-bar {
+  max-width: 560px;
+  margin: 0 auto 24px;
+}
+
+#menu-search-input {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--clr-border);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  font-size: 0.95rem;
+  transition: var(--transition);
+}
+
+#menu-search-input:focus {
+  border-color: var(--clr-gold);
+  box-shadow: 0 0 0 4px rgba(212,150,58,0.12);
+}
+
+.menu-filters {
+  max-width: 560px;
+  margin: 0 auto 32px;
+  display: grid;
   gap: 10px;
-  margin-bottom: 48px;
+}
+
+.menu-filter-label {
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted);
+}
+
+.category-select {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--clr-border);
+  background: var(--clr-surface);
+  color: var(--clr-text);
+  font-size: 0.95rem;
+  transition: var(--transition);
+}
+
+.category-select:focus {
+  border-color: var(--clr-gold);
+  box-shadow: 0 0 0 4px rgba(212,150,58,0.12);
 }
 .filter-btn {
   padding: 8px 20px;

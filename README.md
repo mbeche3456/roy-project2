@@ -7,12 +7,22 @@ A modern, full-featured restaurant ordering website with M-Pesa payments and Sup
 ## 📁 File Structure
 
 ```
-restaurant/
-├── index.html          ← Main HTML (all pages in one)
-├── style.css           ← Full styling (dark theme, responsive)
-├── script.js           ← Cart logic, Supabase, M-Pesa
-├── supabase_setup.sql  ← Run once to create tables + seed data
-└── README.md           ← This file
+savanna-bites/
+├── index.html              ← Home page (customer site)
+├── admin.html              ← Admin dashboard
+├── css/
+│   ├── common.css          ← Shared fonts & resets
+│   ├── home.css            ← Home page styles
+│   └── admin.css           ← Admin page styles
+├── js/
+│   ├── config.js           ← Supabase & M-Pesa keys (home)
+│   ├── home.js             ← Menu, cart, checkout (home)
+│   └── admin.js            ← Menu management (admin)
+├── pages/
+│   └── README.md           ← Notes on page entry points
+├── supabase_setup.sql      ← Database schema + seed data
+├── .env.example            ← Environment variable template
+└── README.md
 ```
 
 ---
@@ -42,8 +52,8 @@ It runs on **demo data** until you connect Supabase.
    - `Project URL` → your `SUPABASE_URL`
    - `anon / public` key → your `SUPABASE_ANON_KEY`
 
-### D. Update script.js
-Open `script.js` and replace lines 13–14:
+### D. Update js/config.js
+Open `js/config.js` and set your keys (or use `.env` with a build step in production):
 ```js
 const SUPABASE_URL      = 'https://your-project-ref.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
@@ -64,7 +74,7 @@ From your app's dashboard, copy:
 - `Consumer Secret`
 - `Passkey` (from Lipa Na M-Pesa → Sandbox credentials)
 
-### C. Update script.js
+### C. Update js/config.js
 ```js
 const MPESA_CONFIG = {
   consumerKey:    'YOUR_CONSUMER_KEY',
@@ -160,10 +170,10 @@ vercel
 ## 🎨 Customisation
 
 ### Change restaurant name
-Search and replace `Savanna Bites` in `index.html` and `script.js`.
+Search and replace `Savanna Bites` in `index.html` and `js/home.js`.
 
 ### Change colours
-Edit CSS variables at the top of `style.css`:
+Edit CSS variables at the top of `css/home.css`:
 ```css
 :root {
   --clr-gold:  #d4963a;  /* Accent colour */
