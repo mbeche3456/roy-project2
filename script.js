@@ -81,66 +81,74 @@ let activeCategory = 'all';
 // ─────────────────────────────────────────────
 // This lets you run the site locally before connecting Supabase.
 const DEMO_MENU = [
-  {
-    id: 'demo-1',
-    name: 'Nyama Choma Platter',
-    description: 'Slow-grilled beef ribs marinated in our secret spice blend, served with kachumbari and ugali.',
-    price: 850,
-    category: 'Grills',
-    image_url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&q=80',
-  },
-  {
-    id: 'demo-2',
-    name: 'Pilau Special',
-    description: 'Aromatic basmati rice cooked with whole spices, tender beef, and caramelised onions.',
-    price: 550,
-    category: 'Rice Dishes',
-    image_url: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?w=600&q=80',
-  },
-  {
-    id: 'demo-3',
-    name: 'Tilapia Fry',
-    description: 'Crispy whole tilapia, deep-fried golden and paired with coconut rice and lime.',
-    price: 780,
-    category: 'Seafood',
-    image_url: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80',
-  },
-  {
-    id: 'demo-4',
-    name: 'Githeri Bowl',
-    description: 'Hearty corn and bean stew slow-cooked with tomatoes, onions, and smoky paprika.',
-    price: 320,
-    category: 'Vegetarian',
-    image_url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600&q=80',
-  },
-  {
-    id: 'demo-5',
-    name: 'Maharagwe na Chapati',
-    description: 'Creamy red kidney bean curry served with four hand-rolled, buttered chapatis.',
-    price: 380,
-    category: 'Vegetarian',
-    image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80',
-  },
-  {
-    id: 'demo-6',
-    name: 'Mutura & Fries',
-    description: 'Authentic Kenyan blood sausage grilled over charcoal, served with crispy seasoned fries.',
-    price: 490,
-    category: 'Grills',
-    image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80',
-  },
+  { id: 'demo-1', name: 'Nyama Choma Platter', description: 'Slow-grilled beef ribs marinated in our secret spice blend, served with kachumbari and ugali.', price: 850, category: 'Grills', image_url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&q=80' },
+  { id: 'demo-2', name: 'Pilau Special', description: 'Aromatic basmati rice cooked with whole spices, tender beef, and caramelised onions.', price: 550, category: 'Rice Dishes', image_url: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?w=600&q=80' },
+  { id: 'demo-3', name: 'Tilapia Fry', description: 'Crispy whole tilapia, deep-fried golden and paired with coconut rice and lime.', price: 780, category: 'Seafood', image_url: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&q=80' },
+  { id: 'demo-4', name: 'Githeri Bowl', description: 'Hearty corn and bean stew slow-cooked with tomatoes, onions, and smoky paprika.', price: 320, category: 'Vegetarian', image_url: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600&q=80' },
+  { id: 'demo-5', name: 'Maharagwe na Chapati', description: 'Creamy red kidney bean curry served with four hand-rolled, buttered chapatis.', price: 380, category: 'Vegetarian', image_url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80' },
+  { id: 'demo-6', name: 'Mutura & Fries', description: 'Authentic Kenyan blood sausage grilled over charcoal, served with crispy seasoned fries.', price: 490, category: 'Grills', image_url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80' },
+  { id: 'demo-7', name: 'Sukuma Wiki Stir-Fry', description: 'Collard greens sautéed with garlic, ginger, and onions — a classic Kenyan favourite.', price: 250, category: 'Vegetarian', image_url: 'https://images.unsplash.com/photo-1609501676725-7186f017a4b1?w=600&q=80' },
+  { id: 'demo-8', name: 'Irio (Mashed Potatoes)', description: 'Creamed potatoes and peas mixed with corn and butter, served with avocado.', price: 320, category: 'Sides', image_url: 'https://images.unsplash.com/photo-1599599810694-f3ee39c3a48b?w=600&q=80' },
+  { id: 'demo-9', name: 'Beef Stew & Ugali', description: 'Tender beef simmered in aromatic gravy, served with maize meal (ugali).', price: 480, category: 'Stews', image_url: 'https://images.unsplash.com/photo-1603073163245-b0d44dc15e1c?w=600&q=80' },
+  { id: 'demo-10', name: 'Chicken Biryani', description: 'Fragrant rice baked with tender chicken, yoghurt, and warm spices.', price: 620, category: 'Rice Dishes', image_url: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=600&q=80' },
+  { id: 'demo-11', name: 'Samosa Platter', description: 'Golden fried pastries filled with spiced meat or vegetables. Served with tamarind sauce.', price: 280, category: 'Appetizers', image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&q=80' },
+  { id: 'demo-12', name: 'Mandazi (Fried Dough)', description: 'Fluffy deep-fried dough pockets dusted with sugar. Serve with beans or stew.', price: 150, category: 'Breads', image_url: 'https://images.unsplash.com/photo-1585518419759-67d4ce7aba3b?w=600&q=80' },
+  { id: 'demo-13', name: 'Kachumbari Salad', description: 'Fresh tomato and onion salad with coriander and lime dressing.', price: 200, category: 'Salads', image_url: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&q=80' },
+  { id: 'demo-14', name: 'Kienyeji Chicken', description: 'Free-range chicken cooked in a rich tomato and onion sauce with African spices.', price: 720, category: 'Grills', image_url: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=600&q=80' },
+  { id: 'demo-15', name: 'Matoke Stew', description: 'Green plantains cooked with beef, tomatoes, and a blend of aromatic spices.', price: 450, category: 'Stews', image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80' },
+  { id: 'demo-16', name: 'Beans & Maize', description: 'Boiled beans mixed with sweetcorn, served with avocado and fresh tomato.', price: 280, category: 'Sides', image_url: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&q=80' },
+  { id: 'demo-17', name: 'Grilled Fish (Whole)', description: 'Fresh whole fish grilled over charcoal, served with lime and seasoned fries.', price: 950, category: 'Seafood', image_url: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600&q=80' },
+  { id: 'demo-18', name: 'Chapati Stack', description: 'Six layers of hand-rolled, buttered chapati — perfect for scooping stews.', price: 180, category: 'Breads', image_url: 'https://images.unsplash.com/photo-1585235662519-c21f081dc466?w=600&q=80' },
+  { id: 'demo-19', name: 'Lentil Soup', description: 'Creamy red lentil soup with coconut milk, turmeric, and cumin.', price: 220, category: 'Soups', image_url: 'https://images.unsplash.com/photo-1547592166-7aae4d755744?w=600&q=80' },
+  { id: 'demo-20', name: 'Grilled Beef Sausages', description: 'Premium beef sausages grilled and served with pap (maize porridge).', price: 380, category: 'Grills', image_url: 'https://images.unsplash.com/photo-1555939594-58d7cb561547?w=600&q=80' },
+  { id: 'demo-21', name: 'Coconut Rice', description: 'Basmati rice cooked in coconut milk with spices and served with lime.', price: 420, category: 'Rice Dishes', image_url: 'https://images.unsplash.com/photo-1584080876905-38f1144bdc21?w=600&q=80' },
+  { id: 'demo-22', name: 'Beef Meatballs', description: 'Tender beef meatballs in a spiced tomato sauce, served with rice.', price: 520, category: 'Main Courses', image_url: 'https://images.unsplash.com/photo-1599599810694-f3ee39c3a48b?w=600&q=80' },
+  { id: 'demo-23', name: 'Pumpkin Soup', description: 'Silky pumpkin soup with ginger, garlic, and a hint of cinnamon.', price: 240, category: 'Soups', image_url: 'https://images.unsplash.com/photo-1585521168556-0c94c1a66eae?w=600&q=80' },
+  { id: 'demo-24', name: 'Grilled Lamb Ribs', description: 'Succulent lamb ribs marinated and grilled to perfection with African spices.', price: 890, category: 'Grills', image_url: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&q=80' },
+  { id: 'demo-25', name: 'Nile Perch Fillet', description: 'Baked Nile perch fillet with lemon butter sauce and seasonal vegetables.', price: 850, category: 'Seafood', image_url: 'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=600&q=80' },
+  { id: 'demo-26', name: 'Avocado Salad', description: 'Creamy avocado salad with tomatoes, red onions, and lime vinaigrette.', price: 350, category: 'Salads', image_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80' },
+  { id: 'demo-27', name: 'Pawpaw with Lime', description: 'Fresh ripe pawpaw (papaya) served chilled with fresh lime juice.', price: 180, category: 'Desserts', image_url: 'https://images.unsplash.com/photo-1585736209952-0f5e7f64f881?w=600&q=80' },
+  { id: 'demo-28', name: 'Posho & Beans', description: 'Cooked maize meal served with slow-cooked beans in tomato gravy.', price: 240, category: 'Sides', image_url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80' },
+  { id: 'demo-29', name: 'Cucumber Raita', description: 'Refreshing yoghurt and cucumber side dish with mint and cumin.', price: 120, category: 'Sides', image_url: 'https://images.unsplash.com/photo-1585518419759-67d4ce7aba3b?w=600&q=80' },
+  { id: 'demo-30', name: 'Beef Kebabs', description: 'Marinated beef chunks grilled on skewers with peppers and onions.', price: 620, category: 'Grills', image_url: 'https://images.unsplash.com/photo-1599599810694-f3ee39c3a48b?w=600&q=80' },
+  { id: 'demo-31', name: 'Cassava Chips', description: 'Crispy deep-fried cassava slices served with spiced salt and chilli sauce.', price: 220, category: 'Sides', image_url: 'https://images.unsplash.com/photo-1599599810694-f3ee39c3a48b?w=600&q=80' },
+  { id: 'demo-32', name: 'Mango Smoothie', description: 'Blended fresh mango with yoghurt, honey, and a splash of lime juice.', price: 150, category: 'Drinks', image_url: 'https://images.unsplash.com/photo-1590080876905-38f1144bdc21?w=600&q=80' }
 ];
 
 
 // ─────────────────────────────────────────────
 // 5. FETCH MENU FROM SUPABASE
 // ─────────────────────────────────────────────
+function getAdminMenuFromStorage() {
+  try {
+    const stored = localStorage.getItem('savanna_bites_admin_menu');
+    return stored ? JSON.parse(stored) : null;
+  } catch (err) {
+    console.warn('Failed to load admin menu from storage:', err);
+    return null;
+  }
+}
+
+function convertAdminMenuToMainFormat(adminItems) {
+  return adminItems.map(item => ({
+    id: String(item.id),
+    name: item.name,
+    price: item.price,
+    image_url: item.image,
+    description: item.description || `Delicious ${item.name}`,
+    category: item.category || 'Specials',
+    available: true
+  }));
+}
+
 function applyMenu(items, source) {
   menuData = items.map(normalizeMenuItem);
   renderMenu(menuData);
   buildCategoryFilters(menuData);
   if (source === 'supabase') {
     showToast(`Menu loaded (${menuData.length} items)`, 'success');
+  } else if (source === 'admin') {
+    console.log('Loaded menu from admin dashboard');
   } else {
     showToast('Showing demo menu (Supabase unavailable)', 'info');
   }
@@ -150,9 +158,18 @@ async function fetchMenu() {
   const grid = document.getElementById('menuGrid');
   if (!grid) return;
 
-  console.log('Fetching menu from Supabase…');
+  console.log('Fetching menu…');
 
   let data = null;
+
+  // 0) Check for admin menu updates from localStorage first
+  const adminMenu = getAdminMenuFromStorage();
+  if (adminMenu?.length) {
+    console.log('Loaded', adminMenu.length, 'items from admin menu');
+    const formattedMenu = convertAdminMenuToMainFormat(adminMenu);
+    applyMenu(formattedMenu, 'admin');
+    return;
+  }
 
   // 1) Supabase JS client
   const db = getSupabaseClient();
