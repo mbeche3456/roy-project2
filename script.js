@@ -14,7 +14,41 @@
 const SUPABASE_URL = 'https://mgdoxpkqghaanwirqobi.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nZG94cGtxZ2hhYW53aXJxb2JpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxMjQxNjQsImV4cCI6MjA5NDcwMDE2NH0.Lu-4okdycE804AAOk-FYw9CX8hvyp1uEfO2iWpbbkp0';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabaseClient = null;
+
+function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+  if (!window.supabase?.createClient) {
+    console.error('Supabase SDK not loaded');
+    return null;
+  }
+  const { createClient } = window.supabase;
+  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  return supabaseClient;
+}
+
+/** Fetch menu via REST when the JS client fails (CORS/network edge cases). */
+async function fetchMenuViaRest() {
+  const url = `${SUPABASE_URL}/rest/v1/menu?select=*&available=eq.true&order=created_at.desc`;
+  const res = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Menu fetch failed (${res.status}): ${body}`);
+  }
+  return res.json();
+}
+
+function normalizeMenuItem(item) {
+  return {
+    ...item,
+    price: Number(item.price),
+  };
+}
 
 // ─────────────────────────────────────────────
 // 2. M-PESA DARAJA API CONFIGURATION
@@ -101,43 +135,59 @@ const DEMO_MENU = [
 // ─────────────────────────────────────────────
 // 5. FETCH MENU FROM SUPABASE
 // ─────────────────────────────────────────────
-async function fetchMenu() {
-  console.log('🔄 Fetching menu...');
-  
-  try {
-    // Try to fetch from Supabase first
-    console.log('📡 Connecting to Supabase:', SUPABASE_URL);
-    
-    const { data, error } = await supabase
-      .from('menu')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw error;
-    }
-
-    if (data && data.length > 0) {
-      console.log('✅ Loaded', data.length, 'items from Supabase');
-      menuData = data;
-      renderMenu(menuData);
-      buildCategoryFilters(menuData);
-      showToast('Menu loaded from Supabase!', 'success');
-      return;
-    } else {
-      console.warn('⚠️  No menu items found in Supabase');
-    }
-  } catch (err) {
-    console.error('❌ Supabase error:', err.message);
-    console.error('Error code:', err.code);
-  }
-
-  // Fallback: Use demo menu
-  console.log('📋 Using demo menu as fallback');
-  menuData = DEMO_MENU;
+function applyMenu(items, source) {
+  menuData = items.map(normalizeMenuItem);
   renderMenu(menuData);
   buildCategoryFilters(menuData);
-  showToast('Showing demo menu (Supabase not available)', 'info');
+  if (source === 'supabase') {
+    showToast(`Menu loaded (${menuData.length} items)`, 'success');
+  } else {
+    showToast('Showing demo menu (Supabase unavailable)', 'info');
+  }
+}
+
+async function fetchMenu() {
+  const grid = document.getElementById('menuGrid');
+  if (!grid) return;
+
+  console.log('Fetching menu from Supabase…');
+
+  let data = null;
+
+  // 1) Supabase JS client
+  const db = getSupabaseClient();
+  if (db) {
+    try {
+      const result = await db
+        .from('menu')
+        .select('*')
+        .eq('available', true)
+        .order('created_at', { ascending: false });
+
+      if (result.error) throw result.error;
+      data = result.data;
+    } catch (err) {
+      console.warn('Supabase client fetch failed:', err.message || err);
+    }
+  }
+
+  // 2) REST fallback (same API the dashboard uses)
+  if (!data?.length) {
+    try {
+      data = await fetchMenuViaRest();
+    } catch (err) {
+      console.warn('REST menu fetch failed:', err.message || err);
+    }
+  }
+
+  if (data?.length) {
+    console.log('Loaded', data.length, 'items from Supabase');
+    applyMenu(data, 'supabase');
+    return;
+  }
+
+  console.log('Using demo menu as fallback');
+  applyMenu(DEMO_MENU, 'demo');
 }
 
 
@@ -159,29 +209,46 @@ function renderMenu(items) {
     const card = document.createElement('div');
     card.className = 'menu-card';
     card.style.animationDelay = `${i * 0.06}s`;
-    card.innerHTML = `
-      <div class="card-img-wrap">
-        <img
-          src="${item.image_url}"
-          alt="${item.name}"
-          loading="lazy"
-          onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=70'"
-        />
-        ${item.category ? `<span class="card-category-tag">${item.category}</span>` : ''}
-      </div>
-      <div class="card-body">
-        <h3 class="card-name">${item.name}</h3>
-        <p class="card-description">${item.description}</p>
-        <div class="card-footer">
-          <div class="card-price">KES ${item.price.toLocaleString()} <span>/serving</span></div>
-          <button
-            class="add-to-cart-btn"
-            aria-label="Add ${item.name} to cart"
-            onclick="addToCart('${item.id}')"
-          >+</button>
-        </div>
-      </div>
-    `;
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'card-img-wrap';
+    const img = document.createElement('img');
+    img.src = item.image_url || '';
+    img.alt = item.name || 'Menu item';
+    img.loading = 'lazy';
+    img.onerror = () => {
+      img.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=70';
+    };
+    imgWrap.appendChild(img);
+    if (item.category) {
+      const tag = document.createElement('span');
+      tag.className = 'card-category-tag';
+      tag.textContent = item.category;
+      imgWrap.appendChild(tag);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+    const nameEl = document.createElement('h3');
+    nameEl.className = 'card-name';
+    nameEl.textContent = item.name || '';
+    const descEl = document.createElement('p');
+    descEl.className = 'card-description';
+    descEl.textContent = item.description || '';
+    const footer = document.createElement('div');
+    footer.className = 'card-footer';
+    const priceEl = document.createElement('div');
+    priceEl.className = 'card-price';
+    const price = Number(item.price) || 0;
+    priceEl.innerHTML = `KES ${price.toLocaleString()} <span>/serving</span>`;
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-to-cart-btn';
+    addBtn.setAttribute('aria-label', `Add ${item.name} to cart`);
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', () => addToCart(item.id));
+    footer.append(priceEl, addBtn);
+    body.append(nameEl, descEl, footer);
+    card.append(imgWrap, body);
     grid.appendChild(card);
   });
 }
@@ -499,8 +566,11 @@ async function initiateStkPush(phone, amount) {
 // 12. SAVE ORDER TO SUPABASE
 // ─────────────────────────────────────────────
 async function saveOrderToSupabase({ name, phone, location, notes, total }) {
+  const db = getSupabaseClient();
+  if (!db) throw new Error('Supabase is not configured');
+
   // Insert into `orders` table
-  const { data: order, error: orderErr } = await supabase
+  const { data: order, error: orderErr } = await db
     .from('orders')
     .insert({
       customer_name: name,
@@ -523,7 +593,7 @@ async function saveOrderToSupabase({ name, phone, location, notes, total }) {
     price:    item.price,
   }));
 
-  const { error: itemsErr } = await supabase
+  const { error: itemsErr } = await db
     .from('order_items')
     .insert(orderItems);
 
@@ -568,7 +638,7 @@ document.getElementById('payBtn').addEventListener('click', async () => {
 
     // Save order to Supabase
     let orderId = `ORD-${Date.now()}`;
-    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    if (getSupabaseClient()) {
       const order = await saveOrderToSupabase({ name, phone, location: loc, notes, total });
       orderId = order.id.slice(0, 8).toUpperCase();
     }
@@ -648,7 +718,13 @@ function delay(ms) {
 // ─────────────────────────────────────────────
 // 17. INIT
 // ─────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   fetchMenu();
-  updateCartUI(); // Ensure badge starts at 0
-});
+  updateCartUI();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
