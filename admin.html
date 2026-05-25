@@ -420,6 +420,12 @@
       margin-top: 1.75rem;
     }
 
+    .panel-subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
     @media (min-width: 992px) {
       .dashboard-grid-full {
         grid-template-columns: 1fr 1fr;
@@ -506,12 +512,12 @@
       <div class="dashboard-grid-full">
         <section class="panel">
           <h2>All Menu Items</h2>
-          <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">Complete list of all available items:</p>
+          <p class="panel-subtitle">Complete list of all available items:</p>
           <div class="menu-grid" id="all-menu-container"></div>
         </section>
         <section class="panel">
           <h2>Sent Carts &amp; Orders</h2>
-          <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">History of all customer orders:</p>
+          <p class="panel-subtitle">History of all customer orders:</p>
           <div class="cart-history-list" id="cart-history-container"></div>
         </section>
       </div>
@@ -593,7 +599,22 @@
       { id: 32, name: 'Mango Smoothie', price: 150, image: 'https://images.unsplash.com/photo-1590080876905-38f1144bdc21?w=500' }
     ];
 
-    let nextFoodId = 4;
+    let nextFoodId = 33;
+
+    // Seed admin menu to localStorage so the main site loads all items immediately.
+    (function seedAdminMenu() {
+      try {
+        const key = 'savanna_bites_admin_menu';
+        if (!localStorage.getItem(key)) {
+          // Store COMPLETE_MENU as the admin-editable menu
+          const adminMenu = COMPLETE_MENU.map(i => ({ id: i.id, name: i.name, price: i.price, image: i.image, category: i.category }));
+          localStorage.setItem(key, JSON.stringify(adminMenu));
+          console.log('Seeded admin menu into localStorage (32 items)');
+        }
+      } catch (err) {
+        console.warn('Failed to seed admin menu:', err);
+      }
+    })();
 
     let activeOrders = [
       { id: 101, tableOrUser: 'Table 4', items: '1x Nyama Choma Platter, 1x Pilau Special', total: 1400 },
