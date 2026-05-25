@@ -120,9 +120,23 @@ const DEMO_MENU = [
 // 5. FETCH MENU FROM SUPABASE
 // ─────────────────────────────────────────────
 function getAdminMenuFromStorage() {
+  const key = 'savanna_bites_admin_menu';
   try {
-    const stored = localStorage.getItem('savanna_bites_admin_menu');
-    return stored ? JSON.parse(stored) : null;
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+
+    const fallbackAdminMenu = DEMO_MENU.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image_url,
+      category: item.category,
+    }));
+    localStorage.setItem(key, JSON.stringify(fallbackAdminMenu));
+    console.log('Seeded default admin menu into localStorage from DEMO_MENU');
+    return fallbackAdminMenu;
   } catch (err) {
     console.warn('Failed to load admin menu from storage:', err);
     return null;
