@@ -46,7 +46,7 @@
 
       <section class="menu-management">
         <h2>Menu Management</h2>
-        <p class="menu-management-intro">Orders, delivery destinations, adding items, and live menu adjustments — in three sections.</p>
+        <p class="menu-management-intro">Orders and live menu adjustments — in two sections.</p>
 
         <div class="mgmt-sections">
           <!-- Section 1: Foods ordered -->
@@ -62,16 +62,7 @@
             <div class="cart-history-list" id="cart-history-container"></div>
           </div>
 
-          <!-- Section 2: Where to & add foods to menu -->
-          <div class="mgmt-section" id="section-add">
-            <div class="mgmt-section-header">
-              <span class="section-number">2</span>
-              <div>
-                <h3>Where To &amp; Foods to Menu</h3>
-                <p>Delivery locations and add new items to the live menu</p>
-              </div>
-            </div>
-            <div class="where-to-list" id="where-to-container"></div>
+          
             <form id="add-food-form" class="admin-form" onsubmit="handleAddFood(event)">
               <div class="admin-form-row form-fields">
                 <label>Food name<input type="text" id="new-food-name" placeholder="e.g. Ugali & Sukuma" required /></label>
@@ -112,6 +103,8 @@
       <p class="footer-note">This page is a local admin mockup and does not save changes permanently. Use a backend integration for production.</p>
     </div>
   </div>
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

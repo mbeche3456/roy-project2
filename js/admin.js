@@ -226,16 +226,90 @@ console.warn('Failed to seed admin menu:', err);
   }
 })();
 
-let activeOrders = [
-  { id: 101, tableOrUser: 'Jane Wanjiru', location: 'Westlands, Nairobi', items: '1x Nyama Choma Platter, 1x Pilau Special', total: 1400 },
-  { id: 102, tableOrUser: 'John Kipchoge', location: 'Karen, Nairobi', items: '2x Tilapia Fry', total: 1560 }
+let activeOrders = [];
+let sentCarts = [];
+
+const ADMIN_ORDER_FETCH_FALLBACK = [
+  { id: '101', tableOrUser: 'Jane Wanjiru', location: 'Westlands, Nairobi', items: '1x Nyama Choma Platter, 1x Pilau Special', total: 1400, status: 'paid', timestamp: '2026-05-25 10:30 AM', phone: '+254 712 345 678' },
+  { id: '102', tableOrUser: 'John Kipchoge', location: 'Karen, Nairobi', items: '2x Tilapia Fry', total: 1560, status: 'preparing', timestamp: '2026-05-25 09:15 AM', phone: '+254 723 456 789' }
 ];
 
-let sentCarts = [
-  { id: 1001, customerName: 'Jane Wanjiru', phone: '+254 712 345 678', location: 'Westlands', items: '2x Nyama Choma, 1x Pilau', total: 2200, timestamp: '2026-05-25 10:30 AM', status: 'Delivered' },
-  { id: 1002, customerName: 'John Kipchoge', phone: '+254 723 456 789', location: 'Karen', items: '1x Tilapia Fry, 3x Githeri Bowl', total: 1500, timestamp: '2026-05-25 09:15 AM', status: 'Delivered' },
-  { id: 1003, customerName: 'Mary Omondi', phone: '+254 734 567 890', location: 'Lavington', items: '1x Maharagwe na Chapati, 2x Mutura', total: 1260, timestamp: '2026-05-25 08:00 AM', status: 'Pending' }
+const ADMIN_HISTORY_FALLBACK = [
+  { id: '1001', customerName: 'Jane Wanjiru', phone: '+254 712 345 678', location: 'Westlands', items: '2x Nyama Choma, 1x Pilau', total: 2200, timestamp: '2026-05-25 10:30 AM', status: 'delivered' },
+  { id: '1002', customerName: 'John Kipchoge', phone: '+254 723 456 789', location: 'Karen', items: '1x Tilapia Fry, 3x Githeri Bowl', total: 1500, timestamp: '2026-05-25 09:15 AM', status: 'delivered' },
+  { id: '1003', customerName: 'Mary Omondi', phone: '+254 734 567 890', location: 'Lavington', items: '1x Maharagwe na Chapati, 2x Mutura', total: 1260, timestamp: '2026-05-25 08:00 AM', status: 'pending' }
 ];
+
+function getSupabaseClient() {
+  if (!window.supabase?.createClient) {
+    return null;
+  }
+  return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+function formatOrderStatus(status) {
+  if (!status) return 'Unknown';
+  return String(status).trim().charAt(0).toUpperCase() + String(status).trim().slice(1);
+}
+
+async function fetchAdminOrdersFromSupabase() {
+  const db = getSupabaseClient();
+  if (!db) return false;
+
+  try {
+    const result = await db.from('order_details').select('*').order('created_at', { ascending: false });
+    if (result.error) throw result.error;
+    if (!result.data || !result.data.length) {
+      activeOrders = [];
+      sentCarts = [];
+      return true;
+    }
+
+    const orders = new Map();
+    result.data.forEach(row => {
+      const id = row.order_id;
+      if (!orders.has(id)) {
+        orders.set(id, {
+          id,
+          tableOrUser: row.customer_name,
+          customerName: row.customer_name,
+          phone: row.phone,
+          location: row.location,
+          total: Number(row.total_amount),
+          status: row.status || 'pending',
+          timestamp: new Date(row.created_at).toLocaleString(),
+          items: []
+        });
+      }
+      const order = orders.get(id);
+      order.items.push(`${row.quantity}x ${row.item_name}`);
+    });
+
+    const allOrders = Array.from(orders.values()).map(order => ({
+      ...order,
+      items: order.items.join(', ')
+    }));
+
+    activeOrders = allOrders.filter(order => order.status !== 'delivered');
+    sentCarts = allOrders.filter(order => order.status === 'delivered');
+    return true;
+  } catch (err) {
+    console.warn('Unable to load orders from Supabase:', err);
+    return false;
+  }
+}
+
+function populateFallbackOrders() {
+  activeOrders = ADMIN_ORDER_FETCH_FALLBACK.slice();
+  sentCarts = ADMIN_HISTORY_FALLBACK.slice();
+}
+
+async function loadAdminOrders() {
+  const loaded = await fetchAdminOrdersFromSupabase();
+  if (!loaded) {
+    populateFallbackOrders();
+  }
+}
 
 function saveMenuToLocalStorage() {
   try {
@@ -342,12 +416,12 @@ function renderCartHistory() {
   container.appendChild(label);
 
   sentCarts.forEach(cart => {
-const statusColor = cart.status === 'Delivered' ? '#2ed573' : '#ffa502';
+const statusColor = String(cart.status || '').toLowerCase() === 'delivered' ? '#2ed573' : '#ffa502';
 const card = document.createElement('div');
 card.className = 'cart-item-card';
 card.innerHTML = `
   <div style="margin-bottom: 0.5rem;">
-    <div class="cart-item-name">${cart.customerName} <span style="display: inline-block; background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-weight: 700; margin-left: 0.5rem;">${cart.status}</span></div>
+    <div class="cart-item-name">${cart.customerName} <span style="display: inline-block; background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-weight: 700; margin-left: 0.5rem;">${formatOrderStatus(cart.status)}</span></div>
   </div>
   <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.4rem;">Order #${cart.id} â€¢ ${cart.timestamp}</div>
   <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 0.6rem;">ðŸ“ ${cart.location} | ðŸ“ž ${cart.phone}</div>
@@ -358,19 +432,18 @@ container.appendChild(card);
   });
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
   event.preventDefault();
   const password = document.getElementById('admin-password').value;
   if (password === ADMIN_PASSWORD) {
-document.getElementById('login-container').style.display = 'none';
-document.getElementById('dashboard-container').style.display = 'block';
-loadFoodMenuFromStorage();
-renderMenu();
-renderOrders();
-renderCartHistory();
-renderWhereTo();
-renderCatalogPick();
-populateCategoryDatalist();
+    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('dashboard-container').style.display = 'block';
+    loadFoodMenuFromStorage();
+    await loadAdminOrders();
+    renderMenu();
+    renderOrders();
+    renderCartHistory();
+    populateCategoryDatalist();
   } else {
 document.getElementById('error-message').style.display = 'block';
 document.getElementById('admin-password').value = '';
@@ -556,8 +629,8 @@ foodMenu.unshift(newItem);
 selectedMenuId = newItem.id;
 populateCategoryDatalist();
 renderMenu();
-renderCatalogPick();
-renderWhereTo();
+ renderCatalogPick();
+ renderWhereTo();
 saveMenuToLocalStorage();
 nameInput.value = '';
 priceInput.value = '';
@@ -612,6 +685,7 @@ selectedMenuId = foodMenu[0]?.id ?? null;
   populateCategoryDatalist();
   renderMenu();
   renderCatalogPick();
+  renderWhereTo();
   saveMenuToLocalStorage();
 }
 
@@ -626,37 +700,41 @@ return;
 const card = document.createElement('div');
 card.className = 'order-card';
 const whereTo = order.location ? `<div class="order-items" style="margin-bottom: 0.5rem;">ðŸ“ Deliver to: <strong>${order.location}</strong></div>` : '';
+const statusLabel = order.status ? `<div style="font-size:0.85rem; color:var(--muted); margin-bottom:0.4rem;">Status: ${formatOrderStatus(order.status)}</div>` : '';
 card.innerHTML = `
   <div class="order-top">
-    <div><strong>${order.tableOrUser}</strong></div>
+    <div><strong>${order.tableOrUser}</strong>${statusLabel}</div>
     <div><strong>KES ${order.total}</strong></div>
   </div>
   ${whereTo}
   <div class="order-items">${order.items}</div>
-  <button class="deliver-btn" onclick="deliverOrder(${order.id})">Mark as Delivered</button>
+  <button class="deliver-btn" onclick="deliverOrder('${order.id}')">Mark as Delivered</button>
 `;
 container.appendChild(card);
   });
 }
 
-function deliverOrder(orderId) {
-  const order = activeOrders.find(o => o.id === orderId);
-  activeOrders = activeOrders.filter(o => o.id !== orderId);
+async function deliverOrder(orderId) {
+  const order = activeOrders.find(o => String(o.id) === String(orderId));
+  activeOrders = activeOrders.filter(o => String(o.id) !== String(orderId));
   if (order) {
+const db = getSupabaseClient();
+if (db) {
+  try {
+    const { error } = await db.from('orders').update({ status: 'delivered' }).eq('id', order.id);
+    if (error) throw error;
+  } catch (err) {
+    console.warn('Failed to update order status in Supabase:', err);
+  }
+}
 sentCarts.unshift({
-  id: 1000 + sentCarts.length + 1,
-  customerName: order.tableOrUser,
-  phone: 'â€”',
-  location: order.location || 'Not specified',
-  items: order.items,
-  total: order.total,
-  timestamp: new Date().toLocaleString(),
-  status: 'Delivered'
+  ...order,
+  status: 'delivered',
+  timestamp: new Date().toLocaleString()
 });
   }
   renderOrders();
   renderCartHistory();
-  renderWhereTo();
   alert(`Order #${orderId} marked as delivered.`);
 }
 
