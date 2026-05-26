@@ -190,13 +190,13 @@ function formatSupabaseMenuItem(item) {
 function buildHomepageMenu(adminItems, supabaseItems) {
   let menu = DEMO_MENU.map(normalizeMenuItem);
 
-  if (adminItems?.length) {
-    menu = mergeMenuByName(convertAdminMenuToMainFormat(adminItems), DEMO_MENU);
-  }
-
   if (supabaseItems?.length) {
     const fromDb = supabaseItems.map(formatSupabaseMenuItem);
     menu = mergeMenuByName(fromDb, menu);
+  }
+
+  if (adminItems?.length) {
+    menu = mergeMenuByName(convertAdminMenuToMainFormat(adminItems), menu);
   }
 
   return menu;
@@ -266,6 +266,39 @@ async function fetchMenu() {
       : 'catalog';
 
   applyMenu(menu, source);
+}
+
+function reloadMenuIfUpdated() {
+  try {
+    const lastUpdate = localStorage.getItem('savanna_bites_menu_updated');
+    const lastPageLoad = sessionStorage.getItem('savanna_bites_last_menu_load');
+    
+    if (lastUpdate && (!lastPageLoad || parseInt(lastUpdate) > parseInt(lastPageLoad))) {
+      console.log('Menu updated in admin, reloading...');
+      sessionStorage.setItem('savanna_bites_last_menu_load', Date.now().toString());
+      fetchMenu();
+    }
+  } catch (err) {
+    console.warn('Failed to check menu updates:', err);
+  }
+}
+
+function setupPageVisibilityListener() {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      reloadMenuIfUpdated();
+    }
+  });
+}
+
+function setupStorageSyncListener() {
+  window.addEventListener('storage', event => {
+    if (event.key === 'savanna_bites_menu_updated' || event.key === 'savanna_bites_admin_menu') {
+      console.log('Detected admin menu update via storage event. Reloading homepage menu.');
+      sessionStorage.setItem('savanna_bites_last_menu_load', Date.now().toString());
+      fetchMenu();
+    }
+  });
 }
 
 
@@ -811,6 +844,8 @@ function delay(ms) {
 // ─────────────────────────────────────────────
 // 17. INIT
 // ─────────────────────────────────────────────
+const CONTACT_MESSAGE_KEY = 'savanna_bites_messages';
+
 function bindMenuSearch() {
   const searchInput = document.getElementById('menu-search-input');
   if (!searchInput) return;
@@ -818,6 +853,49 @@ function bindMenuSearch() {
     menuSearchQuery = searchInput.value;
     renderMenuWithFilters();
   });
+}
+
+function saveContactMessage(message) {
+  try {
+    const stored = localStorage.getItem(CONTACT_MESSAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    parsed.unshift(message);
+    localStorage.setItem(CONTACT_MESSAGE_KEY, JSON.stringify(parsed));
+  } catch (err) {
+    console.warn('Unable to save contact message:', err);
+  }
+}
+
+function handleContactSubmit(event) {
+  event.preventDefault();
+  const name = document.getElementById('contactName')?.value.trim();
+  const email = document.getElementById('contactEmail')?.value.trim();
+  const message = document.getElementById('contactMsg')?.value.trim();
+
+  if (!name || !email || !message) {
+    showToast('Please fill in all fields before sending your message.', 'error');
+    return;
+  }
+
+  saveContactMessage({
+    id: Date.now(),
+    name,
+    email,
+    message,
+    timestamp: new Date().toISOString(),
+    page: window.location.pathname
+  });
+
+  showToast('Message sent. Redirecting to admin page...', 'success');
+  setTimeout(() => {
+    window.location.href = 'admin.html';
+  }, 300);
+}
+
+function bindContactForm() {
+  const form = document.getElementById('contact-form');
+  if (!form) return;
+  form.addEventListener('submit', handleContactSubmit);
 }
 
 function showDemoMenu() {
@@ -828,8 +906,12 @@ function showDemoMenu() {
 
 function initApp() {
   bindMenuSearch();
+  bindContactForm();
   showDemoMenu();
   updateCartUI();
+  setupPageVisibilityListener();
+  setupStorageSyncListener();
+  sessionStorage.setItem('savanna_bites_last_menu_load', Date.now().toString());
   fetchMenu();
 }
 

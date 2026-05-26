@@ -41,6 +41,8 @@ html {
   scroll-behavior: smooth;
   font-size: 16px;
   scroll-padding-top: 96px;
+  min-height: 100%;
+  width: 100%;
 }
 
 body {
@@ -50,6 +52,8 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   padding-top: env(safe-area-inset-top, 0px);
+  min-height: 100vh;
+  width: 100vw;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -378,11 +382,63 @@ ul { list-style: none; }
   margin: 0 auto;
 }
 
+.about-section {
+  position: relative;
+  padding: 80px 40px;
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(13,11,8,0.88) 0%, rgba(13,11,8,0.92) 100%),
+    url('https://i.pinimg.com/736x/31/d3/ea/31d3ea5ca6f3506e749377a609106ca6.jpg') center/cover no-repeat;
+  border-radius: 32px;
+  overflow: hidden;
+}
+.about-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 32px;
+  align-items: center;
+}
+.about-copy p {
+  color: var(--clr-text-muted);
+  font-size: 1.02rem;
+  line-height: 1.85;
+  margin-bottom: 1.35rem;
+}
+.about-features {
+  display: grid;
+  gap: 18px;
+}
+.feature-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 150, 58, 0.15);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-glow);
+}
+.feature-card h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: var(--clr-text);
+}
+.feature-card p {
+  color: var(--clr-text-muted);
+  line-height: 1.7;
+}
+
 /* ---------- MENU SECTION ---------- */
 .menu-section {
+  position: relative;
   padding: 100px 40px;
-  max-width: 1280px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
+  background:
+    linear-gradient(180deg, rgba(13,11,8,0.95) 0%, rgba(13,11,8,0.92) 100%),
+    url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600&q=85') center/cover no-repeat;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
 }
 
 .menu-search-bar {
@@ -933,7 +989,8 @@ ul { list-style: none; }
   border-top: 1px solid var(--clr-border);
 }
 .contact-grid {
-  max-width: 1100px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr 1.2fr;
@@ -1009,6 +1066,9 @@ ul { list-style: none; }
 
   .hero { padding: 100px 20px 60px; }
   .hero-title { font-size: 2.5rem; }
+
+  .about-section { padding: 60px 20px; }
+  .about-grid { grid-template-columns: 1fr; gap: 24px; }
 
   .menu-section { padding: 60px 20px; }
   .menu-grid { grid-template-columns: 1fr 1fr; gap: 16px; }

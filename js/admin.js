@@ -240,11 +240,102 @@ const ADMIN_HISTORY_FALLBACK = [
   { id: '1003', customerName: 'Mary Omondi', phone: '+254 734 567 890', location: 'Lavington', items: '1x Maharagwe na Chapati, 2x Mutura', total: 1260, timestamp: '2026-05-25 08:00 AM', status: 'pending' }
 ];
 
+const ADMIN_MESSAGES_KEY = 'savanna_bites_messages';
+
+function loadContactMessages() {
+  try {
+    const raw = localStorage.getItem(ADMIN_MESSAGES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch (err) {
+    console.warn('Failed to load contact messages:', err);
+    return [];
+  }
+}
+
+function renderMessages() {
+  const container = document.getElementById('messages-container');
+  if (!container) return;
+  const messages = loadContactMessages();
+  container.innerHTML = '';
+
+  if (!messages.length) {
+    container.innerHTML = '<p class="empty-state">No contact messages yet. Messages sent from the contact form will appear here.</p>';
+    return;
+  }
+
+  messages.forEach(msg => {
+    const card = document.createElement('div');
+    card.className = 'message-card';
+    card.innerHTML = `
+      <div class="message-card-header">
+        <strong>${msg.name || 'Unknown'}</strong>
+        <span>${msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Unknown time'}</span>
+      </div>
+      <div class="message-card-meta">
+        <span>${msg.email || 'No email'}</span>
+        <span>${msg.page === '/contact.html' ? 'Contact page' : msg.page === '/index.html' ? 'Home page' : 'Website'}</span>
+      </div>
+      <p class="message-card-body">${msg.message || ''}</p>
+    `;
+    container.appendChild(card);
+  });
+}
+
 function getSupabaseClient() {
   if (!window.supabase?.createClient) {
     return null;
   }
   return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+async function saveMenuItemToSupabase(item) {
+  const db = getSupabaseClient();
+  if (!db) return false;
+
+  try {
+    const data = {
+      id: String(item.id),
+      name: item.name,
+      price: item.price,
+      image_url: item.image || item.image_url,
+      category: item.category || 'Specials',
+      description: item.description || `Delicious ${item.name}`,
+      available: true,
+    };
+
+    const result = await db
+      .from('menu')
+      .upsert(data, { onConflict: 'id' });
+
+    if (result.error) throw result.error;
+    console.log('Menu item saved to Supabase:', item.name);
+    return true;
+  } catch (err) {
+    console.warn('Failed to save menu item to Supabase:', err);
+    return false;
+  }
+}
+
+async function deleteMenuItemFromSupabase(itemId) {
+  const db = getSupabaseClient();
+  if (!db) return false;
+
+  try {
+    const result = await db
+      .from('menu')
+      .delete()
+      .eq('id', String(itemId));
+
+    if (result.error) throw result.error;
+    console.log('Menu item deleted from Supabase:', itemId);
+    return true;
+  } catch (err) {
+    console.warn('Failed to delete menu item from Supabase:', err);
+    return false;
+  }
 }
 
 function formatOrderStatus(status) {
@@ -314,6 +405,7 @@ async function loadAdminOrders() {
 function saveMenuToLocalStorage() {
   try {
 localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(foodMenu));
+localStorage.setItem('savanna_bites_menu_updated', Date.now().toString());
 console.log('Menu saved to localStorage');
   } catch (err) {
 console.error('Failed to save menu to storage:', err);
@@ -392,17 +484,19 @@ container.appendChild(btn);
 function addFoodFromCatalog(item) {
   if (foodMenu.some(m => m.name === item.name)) return;
   const newId = nextFoodId++;
-  foodMenu.unshift({
+  const newItem = {
 id: newId,
 name: item.name,
 price: item.price,
 image: item.image,
 category: item.category
-  });
+  };
+  foodMenu.unshift(newItem);
   selectedMenuId = newId;
   renderMenu();
   renderCatalogPick();
   saveMenuToLocalStorage();
+  saveMenuItemToSupabase(newItem);
 }
 
 function renderCartHistory() {
@@ -432,6 +526,34 @@ container.appendChild(card);
   });
 }
 
+async function syncMenuToSupabase() {
+  if (!foodMenu.length) return;
+  
+  const db = getSupabaseClient();
+  if (!db) return;
+
+  try {
+    const itemsToSync = foodMenu.map(item => ({
+      id: String(item.id),
+      name: item.name,
+      price: item.price,
+      image_url: item.image || item.image_url,
+      category: item.category || 'Specials',
+      description: item.description || `Delicious ${item.name}`,
+      available: true,
+    }));
+
+    const result = await db
+      .from('menu')
+      .upsert(itemsToSync, { onConflict: 'id' });
+
+    if (result.error) throw result.error;
+    console.log('Menu synced to Supabase:', itemsToSync.length, 'items');
+  } catch (err) {
+    console.warn('Failed to sync menu to Supabase:', err);
+  }
+}
+
 async function handleLogin(event) {
   event.preventDefault();
   const password = document.getElementById('admin-password').value;
@@ -440,9 +562,11 @@ async function handleLogin(event) {
     document.getElementById('dashboard-container').style.display = 'block';
     loadFoodMenuFromStorage();
     await loadAdminOrders();
+    await syncMenuToSupabase();
     renderMenu();
     renderOrders();
     renderCartHistory();
+    renderMessages();
     populateCategoryDatalist();
   } else {
 document.getElementById('error-message').style.display = 'block';
@@ -587,6 +711,7 @@ function updateImageUrl(id, url) {
   item.image = url.trim() || getCatalogImage(item.name);
   renderMenu();
   saveMenuToLocalStorage();
+  saveMenuItemToSupabase(item);
 }
 
 function updateCategory(id, value) {
@@ -596,6 +721,7 @@ function updateCategory(id, value) {
   populateCategoryDatalist();
   renderMenu();
   saveMenuToLocalStorage();
+  saveMenuItemToSupabase(item);
 }
 
 function handleAddFood(event) {
@@ -632,6 +758,7 @@ renderMenu();
  renderCatalogPick();
  renderWhereTo();
 saveMenuToLocalStorage();
+saveMenuItemToSupabase(newItem);
 nameInput.value = '';
 priceInput.value = '';
 categoryInput.value = '';
@@ -657,6 +784,7 @@ function updatePrice(id, value) {
   item.price = parseFloat(value) || item.price;
   renderMenu();
   saveMenuToLocalStorage();
+  saveMenuItemToSupabase(item);
 }
 
 function updateImage(id, event) {
@@ -669,6 +797,7 @@ if (!item) return;
 item.image = evt.target.result;
 renderMenu();
 saveMenuToLocalStorage();
+saveMenuItemToSupabase(item);
   };
   reader.readAsDataURL(file);
 }
@@ -687,6 +816,7 @@ selectedMenuId = foodMenu[0]?.id ?? null;
   renderCatalogPick();
   renderWhereTo();
   saveMenuToLocalStorage();
+  deleteMenuItemFromSupabase(id);
 }
 
 function renderOrders() {

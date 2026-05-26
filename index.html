@@ -61,6 +61,39 @@
     </div>
   </section>
 
+  <!-- ===== ABOUT SECTION ===== -->
+  <section class="about-section" id="about">
+    <div class="section-header">
+      <p class="section-eyebrow">Welcome to Savanna Bites</p>
+      <h2 class="section-title">A taste of Africa, delivered fresh</h2>
+      <p class="section-subtitle">At Savanna Bites, every meal is a celebration of Africa’s rich flavours, culture, and warmth.</p>
+    </div>
+    <div class="about-grid">
+      <div class="about-copy">
+        <p>From perfectly grilled delicacies to freshly prepared traditional favourites, we bring you authentic dishes made with passion, quality ingredients, and unforgettable taste.</p>
+        <p>Whether you’re craving a quick bite, a family feast, or a comforting homemade meal, Savanna Bites delivers freshness straight to your door — hot, delicious, and crafted to satisfy every craving.</p>
+      </div>
+      <div class="about-features">
+        <div class="feature-card">
+          <h3>Freshly prepared meals every day</h3>
+          <p>Our kitchen cooks every order with care so your meal arrives warm, vibrant and ready to enjoy.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Authentic African flavours with a modern touch</h3>
+          <p>Enjoy classic recipes elevated with premium ingredients and bold, contemporary seasoning.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Fast and reliable delivery</h3>
+          <p>We aim for speed without compromise — every order is dispatched promptly and tracked to your doorstep.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Warm hospitality in every bite</h3>
+          <p>From every welcome to every dish, we serve each meal with the spirit of authentic Kenyan hospitality.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== MENU SECTION ===== -->
   <section class="menu-section" id="menu">
     <div class="section-header">
@@ -204,14 +237,22 @@
         </div>
         <div class="contact-item">
           <span class="contact-icon">📞</span>
-          <div><strong>Phone</strong><br/>+254 700 123 456</div>
+          <div><strong>Phone</strong><br/>0799 469 163</div>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">✉️</span>
+          <div><strong>Email</strong><br/>rollstechsolution@gmail.com</div>
+        </div>
+        <div class="contact-item">
+          <span class="contact-icon">💬</span>
+          <div><strong>WhatsApp</strong><br/><a class="btn btn-mpesa" href="https://wa.me/qr/CJZFQY2QNLYMN1" target="_blank" rel="noopener noreferrer">Chat on WhatsApp</a></div>
         </div>
         <div class="contact-item">
           <span class="contact-icon">🕐</span>
           <div><strong>Hours</strong><br/>Mon–Sun: 8:00 AM – 10:00 PM</div>
         </div>
       </div>
-      <div class="contact-form-wrap">
+      <form id="contact-form" class="contact-form-wrap">
         <h3>Send a Message</h3>
         <div class="form-group">
           <label for="contactName">Name</label>
@@ -225,8 +266,8 @@
           <label for="contactMsg">Message</label>
           <textarea id="contactMsg" rows="4" placeholder="Write your message here..."></textarea>
         </div>
-        <button class="btn btn-primary" onclick="showToast('Message sent! We\'ll reply soon. 📨', 'success')">Send Message</button>
-      </div>
+        <button type="submit" class="btn btn-primary">Send Message</button>
+      </form>
     </div>
   </section>
 
