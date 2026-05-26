@@ -37,7 +37,11 @@
 /* ---------- RESET & BASE ---------- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { scroll-behavior: smooth; font-size: 16px; }
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+  scroll-padding-top: 96px;
+}
 
 body {
   font-family: var(--font-body);
@@ -45,6 +49,7 @@ body {
   color: var(--clr-text);
   line-height: 1.6;
   overflow-x: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 a { color: inherit; text-decoration: none; }
@@ -164,7 +169,8 @@ ul { list-style: none; }
   align-items: center;
   justify-content: space-between;
   padding: 0 40px;
-  height: 72px;
+  height: calc(72px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: rgba(13,11,8,0.8);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
@@ -260,7 +266,7 @@ ul { list-style: none; }
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 100px 40px 60px;
+  padding: calc(100px + env(safe-area-inset-top, 0px)) 40px 60px;
   /* Stunning food background */
   background:
     linear-gradient(135deg, rgba(13,11,8,0.85) 0%, rgba(13,11,8,0.5) 60%, rgba(13,11,8,0.85) 100%),
@@ -984,10 +990,10 @@ ul { list-style: none; }
 }
 
 @media (max-width: 768px) {
-  .navbar { padding: 0 20px; }
+  .navbar { padding: 0 16px; }
   .nav-links {
     position: fixed;
-    top: 72px; left: 0; right: 0;
+    top: calc(72px + env(safe-area-inset-top, 0px)); left: 0; right: 0;
     background: var(--clr-card);
     border-bottom: 1px solid var(--clr-border);
     flex-direction: column;

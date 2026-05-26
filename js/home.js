@@ -820,10 +820,17 @@ function bindMenuSearch() {
   });
 }
 
+function showDemoMenu() {
+  menuData = DEMO_MENU.map(normalizeMenuItem);
+  buildCategoryFilters(menuData);
+  renderMenuWithFilters();
+}
+
 function initApp() {
   bindMenuSearch();
-  fetchMenu();
+  showDemoMenu();
   updateCartUI();
+  fetchMenu();
 }
 
 if (document.readyState === 'loading') {
