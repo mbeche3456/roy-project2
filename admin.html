@@ -6,6 +6,7 @@
   <title>Savanna Bites — Admin Dashboard</title>
   <link rel="stylesheet" href="css/common.css" />
   <link rel="stylesheet" href="css/admin.css" />
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
 </head>
 <body>
   <div class="page-shell">
@@ -71,7 +72,14 @@
             <div class="cart-history-list" id="cart-history-container"></div>
           </div>
 
-          
+          <div class="mgmt-section" id="section-add">
+            <div class="mgmt-section-header">
+              <span class="section-number">2</span>
+              <div>
+                <h3>Add New Menu Item</h3>
+                <p>Add a custom dish or pick from the catalog below.</p>
+              </div>
+            </div>
             <form id="add-food-form" class="admin-form" onsubmit="handleAddFood(event)">
               <div class="admin-form-row form-fields">
                 <label>Food name<input type="text" id="new-food-name" placeholder="e.g. Ugali & Sukuma" required /></label>
@@ -112,8 +120,8 @@
       <p class="footer-note">This page is a local admin mockup and does not save changes permanently. Use a backend integration for production.</p>
     </div>
   </div>
-  <script src="js/config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/admin.js"></script>
+  <script defer src="js/config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="js/admin.js"></script>
 </body>
 </html>

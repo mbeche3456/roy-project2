@@ -123,26 +123,22 @@ return {
 
 function loadFoodMenuFromStorage() {
   try {
-const stored = localStorage.getItem(ADMIN_MENU_KEY);
-if (stored) {
-  let parsed = JSON.parse(stored);
-  if (parsed.length < FULL_MENU_COUNT) {
-    const fullMenu = COMPLETE_MENU.map(i => ({ id: i.id, name: i.name, price: i.price, image: i.image, category: i.category }));
-    parsed = mergeAdminRecords(parsed, fullMenu);
-  }
-  foodMenu = backfillMenuImages(parsed);
-} else {
-  foodMenu = backfillMenuImages(
-    COMPLETE_MENU.map(i => ({ id: i.id, name: i.name, price: i.price, image: i.image, category: i.category }))
-  );
-}
-const numericIds = foodMenu.map(i => Number(i.id)).filter(n => Number.isFinite(n));
-if (numericIds.length) {
-  nextFoodId = Math.max(...numericIds) + 1;
-}
+    const stored = localStorage.getItem(ADMIN_MENU_KEY);
+    if (stored) {
+      foodMenu = backfillMenuImages(JSON.parse(stored));
+    } else {
+      foodMenu = backfillMenuImages(
+        COMPLETE_MENU.map(i => ({ id: i.id, name: i.name, price: i.price, image: i.image, category: i.category }))
+      );
+      saveMenuToLocalStorage();
+    }
+    const numericIds = foodMenu.map(i => Number(i.id)).filter(n => Number.isFinite(n));
+    if (numericIds.length) {
+      nextFoodId = Math.max(...numericIds) + 1;
+    }
   } catch (err) {
-console.warn('Failed to load food menu:', err);
-foodMenu = backfillMenuImages(foodMenu);
+    console.warn('Failed to load food menu:', err);
+    foodMenu = backfillMenuImages(foodMenu);
   }
 }
 
@@ -202,27 +198,22 @@ merged.push(item);
   return merged;
 }
 
-// Seed admin menu to localStorage so the main site loads all 32 items immediately.
+// Seed admin menu only when nothing is saved yet (do not undo admin removals/edits).
 (function seedAdminMenu() {
   try {
-const fullMenu = COMPLETE_MENU.map(i => ({ id: i.id, name: i.name, price: i.price, image: i.image, category: i.category }));
-const stored = localStorage.getItem(ADMIN_MENU_KEY);
-if (!stored) {
-  localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(fullMenu));
-  console.log('Seeded admin menu into localStorage (32 items)');
-  return;
-}
-const parsed = JSON.parse(stored);
-if (parsed.length < FULL_MENU_COUNT) {
-  const merged = mergeAdminRecords(parsed, fullMenu);
-  localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(backfillMenuImages(merged)));
-  console.log('Upgraded admin menu to', merged.length, 'items');
-} else {
-  const withImages = backfillMenuImages(parsed);
-  localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(withImages));
-}
+    if (localStorage.getItem(ADMIN_MENU_KEY)) return;
+    const fullMenu = COMPLETE_MENU.map(i => ({
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      image: i.image,
+      category: i.category,
+    }));
+    localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(fullMenu));
+    localStorage.setItem('savanna_bites_menu_updated', Date.now().toString());
+    console.log('Seeded admin menu into localStorage (32 items)');
   } catch (err) {
-console.warn('Failed to seed admin menu:', err);
+    console.warn('Failed to seed admin menu:', err);
   }
 })();
 
@@ -404,11 +395,13 @@ async function loadAdminOrders() {
 
 function saveMenuToLocalStorage() {
   try {
-localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(foodMenu));
-localStorage.setItem('savanna_bites_menu_updated', Date.now().toString());
-console.log('Menu saved to localStorage');
+    localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(foodMenu));
+    const ts = Date.now().toString();
+    localStorage.setItem('savanna_bites_menu_updated', ts);
+    window.dispatchEvent(new CustomEvent('savanna-menu-updated', { detail: { timestamp: ts } }));
+    console.log('Menu saved — home page will use', foodMenu.length, 'items');
   } catch (err) {
-console.error('Failed to save menu to storage:', err);
+    console.error('Failed to save menu to storage:', err);
   }
 }
 
@@ -743,14 +736,15 @@ alert('Please provide a valid food name and price.');
 return;
   }
 
-  const createItem = imageSrc => {
-const newItem = {
-  id: nextFoodId++,
-  name,
-  price: Math.round(price * 100) / 100,
-  image: imageSrc || DEFAULT_FOOD_IMAGE,
-  category
-};
+      const createItem = imageSrc => {
+        const newItem = {
+          id: nextFoodId++,
+          name,
+          price: Math.round(price * 100) / 100,
+          image: imageSrc || DEFAULT_FOOD_IMAGE,
+          category,
+          description: `Delicious ${name}`,
+        };
 foodMenu.unshift(newItem);
 selectedMenuId = newItem.id;
 populateCategoryDatalist();

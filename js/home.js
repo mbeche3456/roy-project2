@@ -4,16 +4,55 @@
  */
 
 let supabaseClient = null;
+const MENU_CACHE_KEY = 'savanna_bites_menu_cache';
 
 function getSupabaseClient() {
   if (supabaseClient) return supabaseClient;
   if (!window.supabase?.createClient) {
-    console.error('Supabase SDK not loaded');
+    console.warn('Supabase SDK not loaded');
     return null;
   }
   const { createClient } = window.supabase;
   supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return supabaseClient;
+}
+
+function getCachedMenu() {
+  try {
+    const cached = localStorage.getItem(MENU_CACHE_KEY);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch (err) {
+    console.warn('Unable to read cached menu:', err);
+    return null;
+  }
+}
+
+function saveMenuCache(menu) {
+  try {
+    localStorage.setItem(MENU_CACHE_KEY, JSON.stringify(menu));
+  } catch (err) {
+    console.warn('Unable to cache menu:', err);
+  }
+}
+
+function loadCachedMenu() {
+  const cached = getCachedMenu();
+  if (!cached?.length) return false;
+  menuData = cached.map(normalizeMenuItem);
+  buildCategoryFilters(menuData);
+  renderMenuWithFilters();
+  showToast(`Loaded cached menu (${menuData.length} items)`, 'success');
+  return true;
+}
+
+function optimizeImageUrl(url) {
+  if (!url) return url;
+  if (url.includes('images.unsplash.com')) {
+    return url.replace(/w=\d+/g, 'w=480').replace(/q=\d+/g, 'q=60');
+  }
+  return url;
 }
 
 /** Fetch menu via REST when the JS client fails (CORS/network edge cases). */
@@ -107,18 +146,12 @@ function toAdminStorageFormat(item) {
 function getAdminMenuFromStorage() {
   try {
     const stored = localStorage.getItem(ADMIN_MENU_KEY);
-    const fullSeed = DEMO_MENU.map(toAdminStorageFormat);
-
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (parsed.length >= FULL_MENU_COUNT) return parsed;
-
-      // Upgrade older saves so the homepage always has 32 items
-      const merged = mergeAdminMenuRecords(parsed, fullSeed);
-      localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(merged));
-      return merged;
+      return Array.isArray(parsed) ? parsed : null;
     }
 
+    const fullSeed = DEMO_MENU.map(toAdminStorageFormat);
     localStorage.setItem(ADMIN_MENU_KEY, JSON.stringify(fullSeed));
     console.log('Seeded admin menu into localStorage (32 items)');
     return fullSeed;
@@ -188,17 +221,16 @@ function formatSupabaseMenuItem(item) {
 }
 
 function buildHomepageMenu(adminItems, supabaseItems) {
-  let menu = DEMO_MENU.map(normalizeMenuItem);
+  // Admin dashboard is the live menu source when localStorage has been saved
+  if (adminItems?.length) {
+    return convertAdminMenuToMainFormat(adminItems).map(normalizeMenuItem);
+  }
 
+  let menu = DEMO_MENU.map(normalizeMenuItem);
   if (supabaseItems?.length) {
     const fromDb = supabaseItems.map(formatSupabaseMenuItem);
     menu = mergeMenuByName(fromDb, menu);
   }
-
-  if (adminItems?.length) {
-    menu = mergeMenuByName(convertAdminMenuToMainFormat(adminItems), menu);
-  }
-
   return menu;
 }
 
@@ -206,11 +238,11 @@ function convertAdminMenuToMainFormat(adminItems) {
   return adminItems.map(item => ({
     id: String(item.id),
     name: item.name,
-    price: item.price,
-    image_url: item.image,
+    price: Number(item.price),
+    image_url: item.image || item.image_url,
     description: item.description || `Delicious ${item.name}`,
     category: item.category || 'Specials',
-    available: true
+    available: item.available !== false,
   }));
 }
 
@@ -218,8 +250,11 @@ function applyMenu(items, source) {
   menuData = items.map(normalizeMenuItem);
   buildCategoryFilters(menuData);
   renderMenuWithFilters();
+  saveMenuCache(menuData);
   console.log(`Menu ready: ${menuData.length} items (${source})`);
-  if (menuData.length >= FULL_MENU_COUNT) {
+  if (source === 'admin') {
+    showToast(`Menu updated — ${menuData.length} dishes from admin`, 'success');
+  } else if (menuData.length > 0) {
     showToast(`Menu loaded — ${menuData.length} dishes available`, 'success');
   }
 }
@@ -253,17 +288,15 @@ async function fetchMenu() {
   const grid = document.getElementById('menuGrid');
   if (!grid) return;
 
-  console.log('Building full menu (32 items)…');
-
   const adminMenu = getAdminMenuFromStorage();
-  const supabaseData = await fetchSupabaseMenu();
+  const supabaseData = adminMenu?.length ? null : await fetchSupabaseMenu();
   const menu = buildHomepageMenu(adminMenu, supabaseData);
 
   const source = adminMenu?.length
-    ? 'admin + catalog'
+    ? 'admin'
     : supabaseData?.length
-      ? 'catalog + supabase'
-      : 'catalog';
+      ? 'supabase'
+      : 'demo';
 
   applyMenu(menu, source);
 }
@@ -293,11 +326,16 @@ function setupPageVisibilityListener() {
 
 function setupStorageSyncListener() {
   window.addEventListener('storage', event => {
-    if (event.key === 'savanna_bites_menu_updated' || event.key === 'savanna_bites_admin_menu') {
+    if (event.key === 'savanna_bites_menu_updated' || event.key === ADMIN_MENU_KEY) {
       console.log('Detected admin menu update via storage event. Reloading homepage menu.');
       sessionStorage.setItem('savanna_bites_last_menu_load', Date.now().toString());
       fetchMenu();
     }
+  });
+
+  window.addEventListener('savanna-menu-updated', () => {
+    sessionStorage.setItem('savanna_bites_last_menu_load', Date.now().toString());
+    fetchMenu();
   });
 }
 
@@ -327,11 +365,12 @@ function renderMenu(items) {
     const imgWrap = document.createElement('div');
     imgWrap.className = 'card-img-wrap';
     const img = document.createElement('img');
-    img.src = item.image_url || '';
+    img.src = optimizeImageUrl(item.image_url || '');
     img.alt = item.name || 'Menu item';
     img.loading = 'lazy';
+    img.decoding = 'async';
     img.onerror = () => {
-      img.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=70';
+      img.src = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=480&q=60';
     };
     imgWrap.appendChild(img);
     if (item.category) {
@@ -406,7 +445,7 @@ function buildCategoryFilters(items) {
 // 8. CART LOGIC
 // ─────────────────────────────────────────────
 function getItemById(id) {
-  return menuData.find(m => m.id === id);
+  return menuData.find(m => String(m.id) === String(id));
 }
 
 function addToCart(itemId) {
@@ -482,10 +521,11 @@ function updateCartUI() {
     el.className = 'cart-item';
     el.innerHTML = `
       <img
-        src="${item.image_url}"
+        src="${optimizeImageUrl(item.image_url || '')}"
         alt="${item.name}"
         class="cart-item-img"
-        onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=70'"
+        decoding="async"
+        onerror="this.src='https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&q=60'"
       />
       <div class="cart-item-info">
         <div class="cart-item-name">${item.name}</div>
@@ -786,23 +826,35 @@ document.getElementById('payBtn').addEventListener('click', async () => {
 // 14. NAVBAR — scroll effect & active link
 // ─────────────────────────────────────────────
 const navbar = document.getElementById('navbar');
+const scrollSections = ['home', 'menu', 'contact']
+  .map(id => document.getElementById(id))
+  .filter(Boolean);
+const navLinks = Array.from(document.querySelectorAll('.nav-link'));
+let scrollTicking = false;
 
-window.addEventListener('scroll', () => {
+function updateNavbarState() {
+  if (!navbar) return;
   navbar.classList.toggle('scrolled', window.scrollY > 40);
 
-  // Update active nav link based on scroll position
-  const sections = ['home', 'menu', 'contact'];
   let current = 'home';
-  sections.forEach(id => {
-    const el = document.getElementById(id);
-    if (el && window.scrollY >= el.offsetTop - 100) current = id;
+  scrollSections.forEach(el => {
+    if (window.scrollY >= el.offsetTop - 100) current = el.id;
   });
-  document.querySelectorAll('.nav-link').forEach(link => {
+
+  navLinks.forEach(link => {
     const href = link.getAttribute('href');
     if (href && href.startsWith('#')) {
       link.classList.toggle('active', href === `#${current}`);
     }
   });
+  scrollTicking = false;
+}
+
+window.addEventListener('scroll', () => {
+  if (!scrollTicking) {
+    scrollTicking = true;
+    requestAnimationFrame(updateNavbarState);
+  }
 });
 
 // Hamburger menu
@@ -907,12 +959,17 @@ function showDemoMenu() {
 function initApp() {
   bindMenuSearch();
   bindContactForm();
-  showDemoMenu();
   updateCartUI();
   setupPageVisibilityListener();
   setupStorageSyncListener();
   sessionStorage.setItem('savanna_bites_last_menu_load', Date.now().toString());
-  fetchMenu();
+
+  if (document.getElementById('menuGrid')) {
+    if (!loadCachedMenu()) {
+      showDemoMenu();
+    }
+    fetchMenu();
+  }
 }
 
 if (document.readyState === 'loading') {
